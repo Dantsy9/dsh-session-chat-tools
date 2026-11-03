@@ -43,7 +43,7 @@ async function loadBundle(navigator = {}, overrides = {}) {
     setTimeout,
     clearTimeout,
   }
-  vm.runInNewContext(code, context, { filename: 'dsh-session-tools/client.js' })
+  vm.runInNewContext(code, context, { filename: 'dsh-session-chat-tools/client.js' })
   assert.ok(handoff)
   const exports = handoff.factory((id) => {
     if (id === 'react') return react
@@ -87,9 +87,9 @@ test('browser bundle contributes one localized session-header copy-ID utility', 
 
   exports.apply(ctx)
 
-  assert.equal(handoff.id, 'dsh-session-tools')
+  assert.equal(handoff.id, 'dsh-session-chat-tools')
   assert.deepEqual(Array.from(exports.inject), ['slots', 'locale'])
-  assert.equal(locales[0].namespace, 'dsh-session-tools')
+  assert.equal(locales[0].namespace, 'dsh-session-chat-tools')
   assert.equal(registrations[0].options.id, 'copy-session-id')
   assert.equal(registrations[0].options.name, 'conversation.session.header.utilities')
   assert.equal(typeof registrations[0].component, 'function')
@@ -145,7 +145,7 @@ test('session-row copy item refreshes host placement after increasing the menu h
   const menu = {
     getBoundingClientRect: () => ({ left: 10, top: 10, width: 218, height: 128 }),
     querySelector(selector) {
-      if (selector === '[data-dsh-session-tools-copy]') return null
+      if (selector === '[data-dsh-session-chat-tools-copy]') return null
       if (selector === '[role="menuitem"]') return template
       return null
     },

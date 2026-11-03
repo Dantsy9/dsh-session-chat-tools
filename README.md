@@ -1,34 +1,55 @@
-# dsh-session-tools
+# dsh-session-chat-tools
 
 English | [中文](./README.zh.md)
 
-A DSH Web plugin for session management across conversations:
+A [DeepSeek Harness](https://github.com/deepseek-ai) (DSH) Web plugin for working across conversations:
 
-- `session_archive`: archive the calling session, or another session by exact ID.
-- `session_read`: read DSH's bounded, untrusted text snapshot of another session by exact ID.
-- `session_send`: send a message to another ordinary session and receive a durable request ID.
-- `session_wait`: wait for, or poll, the exact reply associated with a `session_send` request.
-- `Copy session ID` in every populated session row's three-dot menu.
-- `ID` header button: copy the exact ID of the currently open session.
+- `session_archive` — archive the calling session, or another session by exact ID.
+- `session_read` — read DSH's bounded, untrusted text snapshot of another session by exact ID.
+- `session_send` — send a message to another ordinary session and receive a durable request ID.
+- `session_wait` — wait for, or poll, the exact reply associated with a `session_send` request.
+- **Copy session ID** in every populated session row's three-dot menu.
+- **ID** header button — copy the exact ID of the currently open session.
 
-`session_send` places one durable user message in the target's next ordinary turn. DSH's native agent resolver can resume an inactive ordinary session with its recorded context before delivery. `session_wait` correlates the request ID with that exact target turn and returns only its visible assistant text; it does not expose reasoning or tool traces.
+`session_send` places one durable user message in the target's next ordinary turn. A cold ordinary session is resumed through the DSH Session controller before delivery. `session_wait` correlates the request ID with that exact target turn and returns only its visible assistant text; reasoning and tool traces are not exposed.
 
-Archiving is persistent but non-destructive: the session disappears from normal lists while its log remains stored. Cross-session reads reuse DSH's session-reference projection, so each reference keeps the host's configured byte limit.
+> **Fork notice.** This repository is a maintained fork of
+> [Unintendedz/dsh-session-tools](https://github.com/Unintendedz/dsh-session-tools) by **Unintended**.
+> The original design, tool surface, browser UI, and tests come from that project; this fork only
+> carries the DSH `0.2.1-rc.5` compatibility work described under
+> [Changes in this fork](#changes-in-this-fork). Many thanks to the original author — without that
+> work this plugin would not exist. See [Credits](#credits-and-license).
 
-## Requirements
+## Compatibility
 
-- DSH `0.1.1-rc.2` / `0.1.2-rc.1`
-- A Web profile (`web` in the examples below)
+| DSH runtime | Plugin version | Status |
+| --- | --- | --- |
+| `0.2.1-rc.5` (Desktop Web, `desktop` profile) | `0.3.2` | Tested end-to-end |
+| `0.1.1-rc.2` / `0.1.2-rc.1` | upstream `0.2.2` only | Use the [original repository](https://github.com/Unintendedz/dsh-session-tools) |
 
-Version `0.2.2` reads live event snapshots on DSH `0.1.2-rc.1` and retains the legacy event-array path for DSH `0.1.1-rc.2`. Polling sees newly committed replies and terminal status without reusing an older snapshot.
+The `0.3.x` line requires the native **Session format v4** and the Host `sessionController`
+service of DSH `0.2.1-rc.5`. It is not a drop-in replacement for DSH `0.1.x`.
 
 ## Install
 
+From GitHub (after the tag is published):
+
 ```sh
-dsh plugin --profile web add github:Unintendedz/dsh-session-tools#v0.2.2
+dsh plugin --profile desktop add github:Dantsy9/dsh-session-chat-tools#v0.3.2
 ```
 
-Restart the running DSH Web service. Plugins are loaded when the service starts.
+From a local checkout:
+
+```sh
+dsh plugin --profile desktop add "D:\WorkDemo\dsh-session-tools"
+```
+
+Then restart the running DSH Web service (or the DSH desktop app): plugins are loaded when the
+service starts.
+
+> Do **not** install the npm package named `dsh-session-tools`. That is an unrelated, deprecated
+> project by another author, pinned to DSH `0.1.0-rc.6`; installing it is rejected by the 0.2.x
+> compatibility gate (`incompatible with dsh 0.2.1-rc.5`).
 
 ## Usage
 
@@ -53,25 +74,41 @@ The tool returns immediately with a `request_id`. Pass both IDs to `session_wait
 }
 ```
 
-`session_wait` returns `completed`, `running`, or `failed`. Its wait defaults to 60 seconds and accepts 0–600 seconds; use `0` to poll. A `running` result is safe to wait on again with the same IDs because waiting never resends the message or cancels the target.
+`session_wait` returns `completed`, `running`, or `failed`. Its wait defaults to 60 seconds and
+accepts 0–600 seconds; use `0` to poll. A `running` result is safe to wait on again with the same
+IDs: waiting never resends the message or cancels the target.
 
-You can also paste a copied ID into another conversation and ask it to call `session_read`, or ask it to call `session_archive` with that ID. Calling `session_archive` without `session_id` archives the current conversation.
-
-The sidebar menu is repositioned after the copy action is injected, so all four rows remain inside the viewport even when the source conversation is near the bottom of the screen.
+You can also paste a copied ID into another conversation and ask it to call `session_read`, or ask it
+to call `session_archive` with that ID. Calling `session_archive` without `session_id` archives the
+current conversation.
 
 ## Update
 
-Install the desired tag, then restart DSH Web:
+Install the new version directory or tag again, then restart DSH Web:
 
 ```sh
-dsh plugin --profile web add github:Unintendedz/dsh-session-tools#v0.2.2
+dsh plugin --profile desktop add github:Dantsy9/dsh-session-chat-tools#v0.3.2
 ```
 
 ## Uninstall
 
 ```sh
-dsh plugin --profile web remove dsh-session-tools
+dsh plugin --profile desktop remove dsh-session-chat-tools
 ```
+
+## Changes in this fork
+
+The upstream `0.2.2` targeted DSH `0.1.x`. Porting it to `0.2.1-rc.5` required three things:
+
+| Version | Change |
+| --- | --- |
+| `0.3.0` | Resolve the target Agent through the documented Host `sessionController.resolveAgent()` (which resumes a cold ordinary Session) instead of reaching into the internal Typert agent lookup; the Typert path remains as a fallback for profiles that do not compose the controller. Stable `session/not-found`, `session/agent-busy`, and `session/writer-held` failures are reported as readable errors. |
+| `0.3.1` | Native Session format v4 retired the generic `source.kind: "plugin"` wrapper: a relay message must carry a producer-owned kind, so it is now `plugin:dsh-session-chat-tools` (exactly the shape the format's own v3→v4 migration produces). Before this fix every delivered turn failed with `format v4 message requires a producer-owned source kind`. |
+| `0.3.2` | `session_send` drops queued messages that still carry the retired `plugin` kind. Such a row can never be delivered and would make that Session's later turns fail source admission. |
+
+Verification performed on DSH `0.2.1-rc.5`: 28 unit/bundle tests (27 pass, 1 skipped without a
+native Session fixture), plus live cross-session round trips — a cold session resumed, received the
+message, and its reply was collected through `session_wait`.
 
 ## Safety
 
@@ -90,10 +127,17 @@ npm install
 npm test
 ```
 
-Set `DSH_NATIVE_ROOT` to the installed DSH package root containing its `node_modules`, and use a fresh temporary `DSH_HOME`, to include the native Session polling regression. It uses synthetic data and does not boot a profile.
+Set `DSH_NATIVE_ROOT` to the installed DSH package root containing its `node_modules`, and use a
+fresh temporary `DSH_HOME`, to include the native Session polling regression. It uses synthetic data
+and does not boot a profile.
 
-The host entry point is `lib/index.js`; browser source lives in `src/client.jsx`. `npm test` rebuilds `lib/client.js` and runs the host and browser-bundle tests.
+The host entry point is `lib/index.js`; browser source lives in `src/client.jsx`. `npm test`
+rebuilds `lib/client.js` and runs the host and browser-bundle tests.
 
-## Request lifecycle and native output
+## Credits and license
 
-`session_wait` associates an inbox claim with its active turn. If that turn is aborted, errors, or is blocked before the user message is recorded, waiting returns `failed` with that reason. A claim whose turn is still active remains `running`; ownership and queued-request cancellation checks still apply. Native tool output always includes the request status and any terminal reason, followed by the available reply text bounded to 64 KiB of UTF-8. A partial reply therefore remains visibly failed or running.
+- Original project: **[Unintendedz/dsh-session-tools](https://github.com/Unintendedz/dsh-session-tools)** by **Unintended** — design, tool surface, browser UI, tests, and the `0.1.x` implementation this fork starts from. Thank you.
+- This fork: **Dantsy9/dsh-session-chat-tools** — DSH `0.2.1-rc.5` compatibility and maintenance.
+
+Both are released under the MIT License. The original copyright notice is retained in
+[LICENSE](./LICENSE), together with the fork's copyright line.

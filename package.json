@@ -1,7 +1,7 @@
 {
-  "name": "dsh-session-tools",
-  "version": "0.2.2",
-  "description": "Session archive, cross-session read, message, wait, and copy-ID tools for DeepSeek Harness",
+  "name": "dsh-session-chat-tools",
+  "version": "0.3.2",
+  "description": "Session archive, cross-session read, message, wait, and copy-ID tools for DeepSeek Harness (maintained fork of dsh-session-tools)",
   "main": "lib/index.js",
   "scripts": {
     "test": "npm run build && node --test tests/*.mjs",
@@ -35,14 +35,17 @@
   "devDependencies": {
     "esbuild": "^0.28.2"
   },
-  "author": "Unintended",
+  "author": "Dantsy9",
+  "contributors": [
+    "Unintended (original dsh-session-tools: https://github.com/Unintendedz/dsh-session-tools)"
+  ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Unintendedz/dsh-session-tools.git"
+    "url": "git+https://github.com/Dantsy9/dsh-session-chat-tools.git"
   },
-  "homepage": "https://github.com/Unintendedz/dsh-session-tools#readme",
+  "homepage": "https://github.com/Dantsy9/dsh-session-chat-tools#readme",
   "bugs": {
-    "url": "https://github.com/Unintendedz/dsh-session-tools/issues"
+    "url": "https://github.com/Dantsy9/dsh-session-chat-tools/issues"
   },
   "keywords": [
     "deepseek-harness",

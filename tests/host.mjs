@@ -4,12 +4,13 @@ import { pathToFileURL } from 'node:url'
 
 import { apply, inject } from '../lib/index.js'
 
-function setup(targets = new Map()) {
+function setup(targets = new Map(), overrides = {}) {
   const definitions = []
   const archived = []
   const prepared = []
   const sessionListeners = new Set()
   const ctx = {
+    ...overrides,
     tools: {
       register(definition) {
         definitions.push(definition)
@@ -69,8 +70,7 @@ function relay(id, senderSessionId) {
     role: 'user',
     content: [{ type: 'text', text: 'relay' }],
     source: {
-      kind: 'plugin',
-      plugin: 'dsh-session-tools',
+      kind: 'plugin:dsh-session-chat-tools',
       form: 'relay',
       senderSessionId,
     },
@@ -105,11 +105,69 @@ test('session_wait reads the current snapshot of a native DSH Session', {
 
 test('registers send and wait beside the existing globally available session tools', () => {
   const { byName } = setup()
-  assert.deepEqual(inject, ['tools', 'workspaceRegistry', 'sessionReferenceResolver', 'typert'])
+  assert.deepEqual(inject, ['tools', 'workspaceRegistry', 'sessionReferenceResolver'])
   assert.ok(byName('session_archive'))
   assert.ok(byName('session_read'))
   assert.ok(byName('session_send'))
   assert.ok(byName('session_wait'))
+})
+
+test('session_send resolves a cold target through the Session controller', async () => {
+  const target = {
+    id: 'session-cold',
+    session: { header: {}, events: [] },
+    inbox: { nextTurn: [], nextStep: [] },
+    followup(message) { this.inbox.nextTurn.push(message) },
+  }
+  const resolved = []
+  const { byName } = setup(new Map(), {
+    get(name) {
+      assert.equal(name, 'sessionController')
+      return {
+        async resolveAgent(sessionId) {
+          resolved.push(sessionId)
+          return { agent: target }
+        },
+      }
+    },
+  })
+
+  const result = await byName('session_send').execute({
+    session_id: target.id,
+    message: 'Resume this cold session.',
+  }, execution('session-sender'))
+
+  assert.deepEqual(resolved, [target.id])
+  assert.equal(result.queued, true)
+  assert.equal(target.inbox.nextTurn.length, 1)
+})
+
+test('session_controller resolution failures surface the stable reason', async () => {
+  const reasons = new Map([
+    ['session-missing', 'session/not-found'],
+    ['session-busy', 'session/agent-busy'],
+    ['session-held', 'session/writer-held'],
+  ])
+  const { byName } = setup(new Map(), {
+    get(name) {
+      assert.equal(name, 'sessionController')
+      return {
+        async resolveAgent(sessionId) {
+          return { error: { code: reasons.get(sessionId) ?? 'gateway/internal' } }
+        },
+      }
+    },
+  })
+
+  await assert.rejects(() => byName('session_send').execute({
+    session_id: 'session-missing', message: 'x',
+  }, execution()), /not found/)
+  await assert.rejects(() => byName('session_send').execute({
+    session_id: 'session-busy', message: 'x',
+  }, execution()), /busy/)
+  await assert.rejects(() => byName('session_wait').execute({
+    session_id: 'session-held', request_id: 'request-1',
+  }, execution()), /another writer/)
 })
 
 test('session_wait returns only visible assistant text from the request turn', async () => {
@@ -129,7 +187,7 @@ test('session_wait returns only visible assistant text from the request turn', a
             role: 'user',
             content: [{ type: 'text', text: 'relay' }],
             source: {
-              kind: 'plugin', plugin: 'dsh-session-tools', form: 'relay', senderSessionId: 'session-sender',
+              kind: 'plugin:dsh-session-chat-tools', form: 'relay', senderSessionId: 'session-sender',
             },
           },
         },
@@ -510,6 +568,10 @@ test('session_send queues one identified relay on the target session', async () 
   assert.equal(result.session_id, target.id)
   assert.equal(result.queued, true)
   assert.match(result.request_id, /^[0-9a-f-]{36}$/u)
+  // Session format v4 refuses the retired generic `plugin` source: a producer
+  // must name itself, which is what the format migration does for legacy rows.
+  assert.equal(target.inbox.nextTurn[0].source.kind, 'plugin:dsh-session-chat-tools')
+  assert.equal('plugin' in target.inbox.nextTurn[0].source, false)
   assert.deepEqual(target.inbox.nextTurn, [{
     id: result.request_id,
     role: 'user',
@@ -518,12 +580,49 @@ test('session_send queues one identified relay on the target session', async () 
       text: 'Message from DSH session session-sender:\n\nCheck the release state.',
     }],
     source: {
-      kind: 'plugin',
-      plugin: 'dsh-session-tools',
+      kind: 'plugin:dsh-session-chat-tools',
       form: 'relay',
       senderSessionId: 'session-sender',
     },
   }])
+})
+
+test('session_send drops queued messages with the retired generic plugin source', async () => {
+  const legacy = {
+    id: 'legacy-request',
+    role: 'user',
+    content: [{ type: 'text', text: 'legacy relay' }],
+    source: { kind: 'plugin', plugin: 'dsh-session-chat-tools', form: 'relay', senderSessionId: 'session-sender' },
+  }
+  const kept = {
+    id: 'kept-request',
+    role: 'user',
+    content: [{ type: 'text', text: 'native queue item' }],
+    source: { kind: 'user' },
+  }
+  const target = {
+    id: 'session-target',
+    session: { header: {}, events: [] },
+    inbox: {
+      nextTurn: [legacy, kept],
+      nextStep: [],
+      remove(id) {
+        const index = this.nextTurn.findIndex(message => message.id === id)
+        if (index < 0) return false
+        this.nextTurn.splice(index, 1)
+        return true
+      },
+    },
+    followup(message) { this.inbox.nextTurn.push(message) },
+  }
+  const { byName } = setup(new Map([[target.id, target]]))
+
+  const result = await byName('session_send').execute({
+    session_id: target.id,
+    message: 'fresh relay',
+  }, execution('session-sender'))
+
+  assert.deepEqual(target.inbox.nextTurn.map(message => message.id), [kept.id, result.request_id])
 })
 
 test('session_send rejects unsafe targets before queuing a relay', async () => {

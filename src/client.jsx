@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
-const NS = 'dsh-session-tools'
-const STYLE_ID = 'dsh-session-tools-style'
+const NS = 'dsh-session-chat-tools'
+const STYLE_ID = 'dsh-session-chat-tools-style'
 
 const zh = {
   'copy.aria': '复制对话 ID：{id}',
@@ -109,12 +109,12 @@ function menuIcon(copied) {
 function mountSessionMenuItem(anchor, sessionId, t) {
   const menu = nearestMenu(anchor)
   if (menu === undefined) return false
-  if (menu.querySelector('[data-dsh-session-tools-copy]') !== null) return true
+  if (menu.querySelector('[data-dsh-session-chat-tools-copy]') !== null) return true
   const template = menu.querySelector('[role="menuitem"]')
   if (template === null) return false
 
   const item = template.cloneNode(false)
-  item.classList.add('dsh-session-tools-menu-item')
+  item.classList.add('dsh-session-chat-tools-menu-item')
   item.dataset.dshSessionToolsCopy = sessionId
   const icon = document.createElement('span')
   icon.className = template.firstElementChild?.className ?? ''
@@ -210,7 +210,7 @@ function CopySessionId({ sessionId, t }) {
   return (
     <button
       type="button"
-      className="dsh-session-tools-copy"
+      className="dsh-session-chat-tools-copy"
       data-status={status}
       aria-label={status === 'idle' ? t('copy.aria', { id: String(sessionId) }) : title}
       title={title}
@@ -227,7 +227,7 @@ function installStyles() {
   const style = document.createElement('style')
   style.id = STYLE_ID
   style.textContent = `
-.dsh-session-tools-copy {
+.dsh-session-chat-tools-copy {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -242,14 +242,14 @@ function installStyles() {
   font: 400 13px/20px var(--dsw-font-family);
   cursor: pointer;
 }
-.dsh-session-tools-copy:hover { background: var(--dsw-alias-interactive-bg-hover); }
-.dsh-session-tools-copy:focus-visible { outline: 2px solid var(--dsw-alias-label-primary-bluish); outline-offset: 2px; }
-.dsh-session-tools-copy[data-status="copied"],
-.dsh-session-tools-menu-item[data-status="copied"] { color: var(--dsw-alias-label-primary-bluish); }
-.dsh-session-tools-copy[data-status="failed"],
-.dsh-session-tools-menu-item[data-status="failed"] { color: var(--dsw-alias-label-error); }
-.dsh-session-tools-copy span { white-space: nowrap; }
-.dsh-session-tools-copy svg {
+.dsh-session-chat-tools-copy:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.dsh-session-chat-tools-copy:focus-visible { outline: 2px solid var(--dsw-alias-label-primary-bluish); outline-offset: 2px; }
+.dsh-session-chat-tools-copy[data-status="copied"],
+.dsh-session-chat-tools-menu-item[data-status="copied"] { color: var(--dsw-alias-label-primary-bluish); }
+.dsh-session-chat-tools-copy[data-status="failed"],
+.dsh-session-chat-tools-menu-item[data-status="failed"] { color: var(--dsw-alias-label-error); }
+.dsh-session-chat-tools-copy span { white-space: nowrap; }
+.dsh-session-chat-tools-copy svg {
   width: 14px;
   height: 14px;
   fill: none;
