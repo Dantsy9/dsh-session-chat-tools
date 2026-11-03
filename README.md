@@ -32,16 +32,16 @@ service of DSH `0.2.1-rc.5`. It is not a drop-in replacement for DSH `0.1.x`.
 
 ## Install
 
-From GitHub (after the tag is published):
+From GitHub:
 
 ```sh
 dsh plugin --profile desktop add github:Dantsy9/dsh-session-chat-tools#v0.3.2
 ```
 
-From a local checkout:
+From a local checkout (any absolute path):
 
 ```sh
-dsh plugin --profile desktop add "D:\WorkDemo\dsh-session-tools"
+dsh plugin --profile desktop add "/absolute/path/to/dsh-session-chat-tools"
 ```
 
 Then restart the running DSH Web service (or the DSH desktop app): plugins are loaded when the

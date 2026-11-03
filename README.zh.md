@@ -32,16 +32,16 @@ turn，只返回其中对用户可见的 assistant 文本，不暴露推理或�
 
 ## 安装
 
-从 GitHub 安装（打标签后）：
+从 GitHub 安装：
 
 ```sh
 dsh plugin --profile desktop add github:Dantsy9/dsh-session-chat-tools#v0.3.2
 ```
 
-从本地目录安装：
+从本地目录安装（任意绝对路径）：
 
 ```sh
-dsh plugin --profile desktop add "D:\WorkDemo\dsh-session-tools"
+dsh plugin --profile desktop add "/absolute/path/to/dsh-session-chat-tools"
 ```
 
 随后重启正在运行的 DSH Web 服务（或 DSH 桌面端）。插件只会在服务启动时装载。
