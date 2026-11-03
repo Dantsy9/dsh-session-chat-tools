@@ -8,8 +8,10 @@
 - `session_read`：按精确 ID 读取另一个会话经过 DSH 限长处理的不可信文本快照。
 - `session_send`：向另一个普通会话发送消息，并取得一个持久的请求 ID。
 - `session_wait`：等待或轮询某次 `session_send` 请求所对应的精确回复。
-- 每个已有内容的会话行都在“三个点”菜单中提供 **复制会话 ID**。
 - 当前已打开会话的顶部提供 **ID** 按钮，可复制其精确 ID。
+
+> 会话行的“三个点”菜单在 DSH `0.2.1` 中**已内置**最后一项「复制 Session ID」，因此本插件不再
+> 添加该项。早期版本曾向该菜单注入一个重复条目，界面上会同时出现两个复制项。
 
 `session_send` 会把一条持久的用户消息放入目标会话的下一个普通 turn；目标会话若未运行，会先由
 DSH 的 Session controller 按记录的上下文恢复再投递。`session_wait` 用请求 ID 精确关联目标
@@ -35,7 +37,7 @@ turn，只返回其中对用户可见的 assistant 文本，不暴露推理或�
 从 GitHub 安装：
 
 ```sh
-dsh plugin --profile desktop add github:Dantsy9/dsh-session-chat-tools#v0.3.2
+dsh plugin --profile desktop add github:Dantsy9/dsh-session-chat-tools#v0.3.3
 ```
 
 从本地目录安装（任意绝对路径）：
@@ -51,7 +53,7 @@ dsh plugin --profile desktop add "/absolute/path/to/dsh-session-chat-tools"
 
 ## 使用
 
-在会话行的“三个点”菜单中选择 **复制会话 ID**，也可以打开会话后点击顶部的 **ID**。
+复制会话 ID：用该会话行“三个点”菜单中**内置**的「复制 Session ID」，或对当前打开的会话点击顶部的 **ID**。
 
 要让另一个普通会话处理任务，先调用 `session_send`：
 
@@ -83,7 +85,7 @@ dsh plugin --profile desktop add "/absolute/path/to/dsh-session-chat-tools"
 重新安装目标版本或标签，然后重启 DSH Web：
 
 ```sh
-dsh plugin --profile desktop add github:Dantsy9/dsh-session-chat-tools#v0.3.2
+dsh plugin --profile desktop add github:Dantsy9/dsh-session-chat-tools#v0.3.3
 ```
 
 ## 卸载
@@ -94,15 +96,16 @@ dsh plugin --profile desktop remove dsh-session-chat-tools
 
 ## 本分支的改动
 
-上游 `0.2.2` 面向 DSH `0.1.x`，迁移到 `0.2.1-rc.5` 需要三处改动：
+上游 `0.2.2` 面向 DSH `0.1.x`，迁移到 `0.2.1-rc.5` 需要以下改动：
 
 | 版本 | 改动 |
 | --- | --- |
 | `0.3.0` | 目标 Agent 改为通过宿主公开的 `sessionController.resolveAgent()` 解析（它会按记录恢复冷会话），不再依赖内部的 Typert agent lookup；未组合该 controller 的 profile 仍回退到 Typert。`session/not-found`、`session/agent-busy`、`session/writer-held` 会转成可读错误。 |
 | `0.3.1` | 原生 Session 格式 v4 废弃了通用的 `source.kind: "plugin"` 包装，转发消息必须使用生产者自有 kind，故改为 `plugin:dsh-session-chat-tools`（与格式层 v3→v4 迁移生成的形状一致）。修复前每次投递都会以 `format v4 message requires a producer-owned source kind` 失败。 |
 | `0.3.2` | `session_send` 会清掉队列中仍带旧 `plugin` kind 的消息：这类记录永远无法投递，并且会让该会话后续 turn 持续因 source 校验失败。 |
+| `0.3.3` | 移除通过 DOM 注入的会话行「复制会话 ID」菜单项。DSH `0.2.1` 已内置该项，注入会让同一菜单出现两个相同条目。会话头部的 **ID** 按钮保留。 |
 
-在 DSH `0.2.1-rc.5` 上的验证：28 项单元/浏览器包测试（27 通过、1 项因缺少原生 Session 环境跳过），
+在 DSH `0.2.1-rc.5` 上的验证：27 项单元/浏览器包测试（26 通过、1 项因缺少原生 Session 环境跳过），
 以及真实跨会话往返——冷会话被恢复、收到消息，并通过 `session_wait` 取回了它的回复。
 
 ## 安全与数据行为

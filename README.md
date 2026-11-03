@@ -8,8 +8,11 @@ A [DeepSeek Harness](https://github.com/deepseek-ai) (DSH) Web plugin for workin
 - `session_read` — read DSH's bounded, untrusted text snapshot of another session by exact ID.
 - `session_send` — send a message to another ordinary session and receive a durable request ID.
 - `session_wait` — wait for, or poll, the exact reply associated with a `session_send` request.
-- **Copy session ID** in every populated session row's three-dot menu.
 - **ID** header button — copy the exact ID of the currently open session.
+
+> The session-row "..." menu already ships a built-in **Copy Session ID** item in DSH `0.2.1`
+> (the last item of that menu). This plugin therefore no longer adds one; earlier releases injected a
+> duplicate entry into that menu, which appeared as two copy items side by side.
 
 `session_send` places one durable user message in the target's next ordinary turn. A cold ordinary session is resumed through the DSH Session controller before delivery. `session_wait` correlates the request ID with that exact target turn and returns only its visible assistant text; reasoning and tool traces are not exposed.
 
@@ -35,7 +38,7 @@ service of DSH `0.2.1-rc.5`. It is not a drop-in replacement for DSH `0.1.x`.
 From GitHub:
 
 ```sh
-dsh plugin --profile desktop add github:Dantsy9/dsh-session-chat-tools#v0.3.2
+dsh plugin --profile desktop add github:Dantsy9/dsh-session-chat-tools#v0.3.3
 ```
 
 From a local checkout (any absolute path):
@@ -53,7 +56,8 @@ service starts.
 
 ## Usage
 
-Use **Copy session ID** in a row's three-dot menu, or open a session and click **ID** in its header.
+To copy a session's ID, use the built-in **Copy Session ID** item in that row's three-dot menu, or —
+for the session you have open — click **ID** in its header.
 
 To ask another ordinary session to do work, call `session_send`:
 
@@ -87,7 +91,7 @@ current conversation.
 Install the new version directory or tag again, then restart DSH Web:
 
 ```sh
-dsh plugin --profile desktop add github:Dantsy9/dsh-session-chat-tools#v0.3.2
+dsh plugin --profile desktop add github:Dantsy9/dsh-session-chat-tools#v0.3.3
 ```
 
 ## Uninstall
@@ -98,15 +102,16 @@ dsh plugin --profile desktop remove dsh-session-chat-tools
 
 ## Changes in this fork
 
-The upstream `0.2.2` targeted DSH `0.1.x`. Porting it to `0.2.1-rc.5` required three things:
+The upstream `0.2.2` targeted DSH `0.1.x`. Porting it to `0.2.1-rc.5` required these changes:
 
 | Version | Change |
 | --- | --- |
 | `0.3.0` | Resolve the target Agent through the documented Host `sessionController.resolveAgent()` (which resumes a cold ordinary Session) instead of reaching into the internal Typert agent lookup; the Typert path remains as a fallback for profiles that do not compose the controller. Stable `session/not-found`, `session/agent-busy`, and `session/writer-held` failures are reported as readable errors. |
 | `0.3.1` | Native Session format v4 retired the generic `source.kind: "plugin"` wrapper: a relay message must carry a producer-owned kind, so it is now `plugin:dsh-session-chat-tools` (exactly the shape the format's own v3→v4 migration produces). Before this fix every delivered turn failed with `format v4 message requires a producer-owned source kind`. |
 | `0.3.2` | `session_send` drops queued messages that still carry the retired `plugin` kind. Such a row can never be delivered and would make that Session's later turns fail source admission. |
+| `0.3.3` | Remove the DOM-injected session-row "Copy session ID" menu item. DSH `0.2.1` ships that item natively, so the injection produced two identical entries in one menu. The Session-header **ID** chip remains. |
 
-Verification performed on DSH `0.2.1-rc.5`: 28 unit/bundle tests (27 pass, 1 skipped without a
+Verification performed on DSH `0.2.1-rc.5`: 27 unit/bundle tests (26 pass, 1 skipped without a
 native Session fixture), plus live cross-session round trips — a cold session resumed, received the
 message, and its reply was collected through `session_wait`.
 

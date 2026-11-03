@@ -6,7 +6,6 @@ import vm from 'node:vm'
 async function loadBundle(navigator = {}, overrides = {}) {
   const code = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
   let handoff
-  const listeners = []
   const react = new Proxy({}, { get: (_target, key) => {
     if (key === 'createElement') return (...args) => ({ args })
     return () => undefined
@@ -31,11 +30,8 @@ async function loadBundle(navigator = {}, overrides = {}) {
       }),
       head: { appendChild() {} },
       body: { appendChild() {} },
-      addEventListener(type, listener, options) { listeners.push({ type, listener, options }) },
-      removeEventListener(type, listener, options) {
-        const index = listeners.findIndex(item => item.type === type && item.listener === listener && item.options === options)
-        if (index !== -1) listeners.splice(index, 1)
-      },
+      addEventListener() {},
+      removeEventListener() {},
       ...overrides.document,
     },
     Event,
@@ -52,21 +48,7 @@ async function loadBundle(navigator = {}, overrides = {}) {
     }
     throw new Error(`unexpected browser external: ${id}`)
   })
-  return { handoff, exports, listeners }
-}
-
-function fakeElement() {
-  return {
-    className: '',
-    classList: { add() {} },
-    dataset: {},
-    style: {},
-    setAttribute() {},
-    appendChild() {},
-    append() {},
-    addEventListener() {},
-    replaceChildren() {},
-  }
+  return { handoff, exports }
 }
 
 test('browser bundle contributes one localized session-header copy-ID utility', async () => {
@@ -89,10 +71,31 @@ test('browser bundle contributes one localized session-header copy-ID utility', 
 
   assert.equal(handoff.id, 'dsh-session-chat-tools')
   assert.deepEqual(Array.from(exports.inject), ['slots', 'locale'])
+  assert.equal(locales.length, 1)
   assert.equal(locales[0].namespace, 'dsh-session-chat-tools')
+  assert.equal(registrations.length, 1)
   assert.equal(registrations[0].options.id, 'copy-session-id')
   assert.equal(registrations[0].options.name, 'conversation.session.header.utilities')
+  assert.equal(registrations[0].options.locale, 'dsh-session-chat-tools')
   assert.equal(typeof registrations[0].component, 'function')
+})
+
+test('browser bundle no longer injects a session-row menu item', async () => {
+  const { exports } = await loadBundle()
+  const listeners = []
+  const ctx = {
+    effect(start) { return start() },
+    locale: { bind() { return key => key }, register() { return () => {} } },
+    slots: { inject(_name, mount) { return mount() }, register() { return () => {} } },
+    __capture: (type, listener) => listeners.push({ type, listener }),
+  }
+
+  exports.apply(ctx)
+
+  // 0.3.2 exposed the DOM helper; 0.3.3 must not.
+  assert.equal('sessionIdFromElement' in exports, false)
+  assert.equal('installSessionMenuCopy' in exports, false)
+  assert.equal(listeners.length, 0)
 })
 
 test('clipboard helper reports success only after the exact session id is accepted', async () => {
@@ -103,83 +106,4 @@ test('clipboard helper reports success only after the exact session id is accept
 
   const denied = await loadBundle({ clipboard: { async writeText() { throw new Error('denied') } } })
   assert.equal(await denied.exports.writeClipboard('session-other'), false)
-})
-
-test('browser bundle watches session-row action buttons and resolves their exact React-owned id', async () => {
-  const { exports, listeners } = await loadBundle()
-  const ctx = {
-    effect(start) { return start() },
-    locale: {
-      bind() { return key => key },
-      register() { return () => {} },
-    },
-    slots: {
-      inject(_name, mount) { return mount() },
-      register() { return () => {} },
-    },
-  }
-
-  exports.apply(ctx)
-  const click = listeners.find(item => item.type === 'click')
-  assert.equal(typeof click?.listener, 'function')
-  assert.equal(click?.options, true)
-
-  const element = {}
-  Object.defineProperty(element, '__reactFiber$test', {
-    enumerable: true,
-    value: {
-      memoizedProps: {},
-      return: {
-        memoizedProps: { node: { id: 'session-from-row' } },
-        return: null,
-      },
-    },
-  })
-  assert.equal(exports.sessionIdFromElement(element), 'session-from-row')
-})
-
-test('session-row copy item refreshes host placement after increasing the menu height', async () => {
-  const events = []
-  let inserted = false
-  const template = { ...fakeElement(), cloneNode: () => fakeElement() }
-  const menu = {
-    getBoundingClientRect: () => ({ left: 10, top: 10, width: 218, height: 128 }),
-    querySelector(selector) {
-      if (selector === '[data-dsh-session-chat-tools-copy]') return null
-      if (selector === '[role="menuitem"]') return template
-      return null
-    },
-    insertBefore() { inserted = true },
-  }
-  const { exports, listeners } = await loadBundle({}, {
-    window: { dispatchEvent(event) { events.push(event.type); return true } },
-    document: {
-      querySelectorAll: () => [menu],
-      createElement: () => fakeElement(),
-      createElementNS: () => fakeElement(),
-    },
-  })
-  const ctx = {
-    effect(start) { return start() },
-    locale: { bind() { return key => key }, register() { return () => {} } },
-    slots: { inject(_name, mount) { return mount() }, register() { return () => {} } },
-  }
-  exports.apply(ctx)
-
-  const button = {
-    getBoundingClientRect: () => ({ left: 10, top: 150, right: 30, bottom: 170 }),
-    closest(selector) {
-      if (selector === 'button') return this
-      if (selector === '[role="treeitem"]') return {}
-      return null
-    },
-  }
-  Object.defineProperty(button, '__reactFiber$test', {
-    value: { memoizedProps: { node: { id: 'session-near-bottom' } }, return: null },
-  })
-  listeners.find(item => item.type === 'click').listener({ target: button })
-  await new Promise(resolve => setTimeout(resolve, 10))
-
-  assert.equal(inserted, true)
-  assert.deepEqual(events, ['resize'])
 })

@@ -1,6 +1,6 @@
 {
   "name": "dsh-session-chat-tools",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Session archive, cross-session read, message, wait, and copy-ID tools for DeepSeek Harness (maintained fork of dsh-session-tools)",
   "main": "lib/index.js",
   "scripts": {
